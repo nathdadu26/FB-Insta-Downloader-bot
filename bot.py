@@ -205,17 +205,17 @@ async def send_force_join(update: Update):
 
 
 # ================== NO CREDITS MESSAGE ==================
-async def send_no_credits(update: Update, name: str):
-    await update.message.reply_text(
-        f"❌ <b>You have no credits!</b>\n\n"
-        f"To download videos, you need credits.\n\n"
-        f"🎁 <b>Earn credits for free:</b>\n"
-        f"1. /refer — Share your refer link\n"
-        f"   When a new user joins, you get <b>12 hours</b> free!\n\n"
-        f"2. /earn — Get a time-limited link\n"
-        f"   Share it, when someone uses it you get <b>12 hours</b> free!",
-        parse_mode="HTML"
+async def send_no_credits(update: Update):
+    text = (
+        "❌ <b>You have no credits!</b>\n\n"
+        "To download videos, you need credits.\n\n"
+        "🎁 <b>Earn credits for free:</b>\n"
+        "1. /refer — Share your refer link\n"
+        "   When a new user joins, you get <b>12 hours</b> free!\n\n"
+        "2. /earn — Get a time-limited link\n"
+        "   Share it, when someone uses it you get <b>12 hours</b> free!"
     )
+    await update.message.reply_text(text, parse_mode="HTML")
 
 
 # ================== START ==================
@@ -241,15 +241,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = await process_refer(refer_code, user_id)
         if result:
             referrer_id, expiry = result
-            # Referrer ko notify karo
             try:
                 await context.bot.send_message(
                     chat_id=referrer_id,
                     text=(
-                        f"🎉 <b>You earned credits!</b>\n\n"
-                        f"Someone joined using your refer link.\n"
+                        "🎉 <b>You earned credits!</b>\n\n"
+                        "Someone joined using your refer link.\n"
                         f"✅ <b>12 hours</b> of free downloads added!\n"
-                        f"⏰ <b>Expires:</b> {format_expiry(expiry)}"
+                        f"⏰ <b>Expires in:</b> {format_expiry(expiry)}"
                     ),
                     parse_mode="HTML"
                 )
@@ -262,13 +261,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = await process_deep_link(start_param, user_id)
 
         if result == "expired":
-            # Naya link do
             new_link, new_expiry = await create_deep_link(user_id)
             await update.message.reply_text(
-                f"⏰ <b>Link expired!</b>\n\n"
-                f"This link has expired. Here is your new link:\n\n"
+                "⏰ <b>Link expired!</b>\n\n"
+                "This link has expired. Here is your new link:\n\n"
                 f"🔗 <code>{new_link}</code>\n\n"
-                f"⚠️ This link expires in <b>5 minutes</b>.",
+                "⚠️ This link expires in <b>5 minutes</b>.",
                 parse_mode="HTML"
             )
             return
@@ -287,17 +285,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        elif result == "invalid":
-            pass  # Normal start karo
-
         elif isinstance(result, tuple) and result[0] == "success":
             _, creator_id, new_expiry = result
-            # Creator ko notify karo
             try:
                 await context.bot.send_message(
                     chat_id=creator_id,
                     text=(
-                        f"🎉 <b>Someone used your earn link!</b>\n\n"
+                        "🎉 <b>Someone used your earn link!</b>\n\n"
                         f"✅ <b>12 hours</b> of free downloads added!\n"
                         f"⏰ <b>Expires in:</b> {format_expiry(new_expiry)}"
                     ),
@@ -307,23 +301,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
     else:
-        # Normal start
         await register_user(user_id, name, username)
 
     # ================== WELCOME MESSAGE ==================
     await update.message.reply_text(
         f"👋 Hello {name}!\n"
-        f"🤖 Welcome to Facebook, Insta Downloader Bot\n\n"
-        f"📌 How to use:\n"
-        f"1. Copy a Facebook, Insta video or reel link\n"
-        f"2. Send it here\n"
-        f"3. Receive your file instantly\n\n"
-        f"🌐 Supported:\n"
-        f"facebook.com, instagram.com\n\n"
-        f"⚡ Features:\n"
-        f"- High quality downloads\n"
-        f"- Fast processing\n"
-        f"- No ads"
+        "🤖 Welcome to Facebook, Insta Downloader Bot\n\n"
+        "📌 How to use:\n"
+        "1. Copy a Facebook, Insta video or reel link\n"
+        "2. Send it here\n"
+        "3. Receive your file instantly\n\n"
+        "🌐 Supported:\n"
+        "facebook.com, instagram.com\n\n"
+        "⚡ Features:\n"
+        "- High quality downloads\n"
+        "- Fast processing\n"
+        "- No ads"
     )
 
 
@@ -345,12 +338,12 @@ async def refer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link, code = result
 
     await update.message.reply_text(
-        f"🔗 <b>Your Refer Link:</b>\n\n"
+        "🔗 <b>Your Refer Link:</b>\n\n"
         f"<code>{link}</code>\n\n"
-        f"📢 Share this link with your friends.\n"
-        f"When a <b>new user</b> starts the bot using your link,\n"
-        f"you get <b>12 hours</b> of free downloads! 🎉\n\n"
-        f"⚠️ Only new users count (users who haven't used the bot before).",
+        "📢 Share this link with your friends.\n"
+        "When a <b>new user</b> starts the bot using your link,\n"
+        "you get <b>12 hours</b> of free downloads! 🎉\n\n"
+        "⚠️ Only new users count (users who haven't used the bot before).",
         parse_mode="HTML"
     )
 
@@ -368,12 +361,12 @@ async def earn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link, expires_at = await create_deep_link(user_id)
 
     await update.message.reply_text(
-        f"⚡ <b>Your Earn Link:</b>\n\n"
+        "⚡ <b>Your Earn Link:</b>\n\n"
         f"<code>{link}</code>\n\n"
-        f"📢 Share this link. When someone starts the bot using it,\n"
-        f"you get <b>12 hours</b> of free downloads! 🎉\n\n"
-        f"⏰ <b>This link expires in 5 minutes!</b>\n"
-        f"Use /earn again to get a new link.",
+        "📢 Share this link. When someone starts the bot using it,\n"
+        "you get <b>12 hours</b> of free downloads! 🎉\n\n"
+        "⏰ <b>This link expires in 5 minutes!</b>\n"
+        "Use /earn again to get a new link.",
         parse_mode="HTML"
     )
 
@@ -386,19 +379,18 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = update.effective_user
     user_id = user.id
-    name = user.first_name
 
     expiry = await get_credits_expiry(user_id)
 
     if expiry:
         await update.message.reply_text(
-            f"✅ <b>You have active credits!</b>\n\n"
+            "✅ <b>You have active credits!</b>\n\n"
             f"⏰ <b>Expires in:</b> {format_expiry(expiry)}\n\n"
-            f"You can download unlimited videos until your credits expire.",
+            "You can download unlimited videos until your credits expire.",
             parse_mode="HTML"
         )
     else:
-        await send_no_credits(update, name)
+        await send_no_credits(update)
 
 
 # ================== BROADCAST COMMAND ==================
@@ -407,7 +399,6 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You are not authorized.")
         return
 
-    # Reply to message se broadcast karo
     if update.message.reply_to_message:
         broadcast_msg = update.message.reply_to_message
         user_ids = await get_all_user_ids()
@@ -425,10 +416,10 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 success += 1
             except:
                 failed += 1
-            await asyncio.sleep(0.05)  # Flood wait se bachne ke liye
+            await asyncio.sleep(0.05)
 
         await status_msg.edit_text(
-            f"✅ <b>Broadcast Complete!</b>\n\n"
+            "✅ <b>Broadcast Complete!</b>\n\n"
             f"👥 Total: {total}\n"
             f"✅ Success: {success}\n"
             f"❌ Failed: {failed}",
@@ -436,7 +427,6 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Text ke sath broadcast karo /broadcast message
     text = " ".join(context.args) if context.args else None
     if not text:
         await update.message.reply_text(
@@ -458,17 +448,14 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for uid in user_ids:
         try:
-            await context.bot.send_message(
-                chat_id=uid,
-                text=text
-            )
+            await context.bot.send_message(chat_id=uid, text=text)
             success += 1
         except:
             failed += 1
         await asyncio.sleep(0.05)
 
     await status_msg.edit_text(
-        f"✅ <b>Broadcast Complete!</b>\n\n"
+        "✅ <b>Broadcast Complete!</b>\n\n"
         f"👥 Total: {total}\n"
         f"✅ Success: {success}\n"
         f"❌ Failed: {failed}",
@@ -486,12 +473,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     name = user.first_name
 
-    # User register karo agar nahi hai
     await register_user(user_id, name, user.username or "N/A")
 
-    # Credits check karo
     if not await has_credits(user_id):
-        await send_no_credits(update, name)
+        await send_no_credits(update)
         return
 
     raw_url = update.message.text.strip()
@@ -506,3 +491,198 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if platform == "facebook" and url_type in ("photo", "other"):
         await update.message.reply_text(
             f"Hello {name}! This bot only downloads Reels and Videos.\n\n"
+            "✅ Reels\n"
+            "✅ Videos\n"
+            "❌ Stories\n"
+            "❌ Pictures"
+        )
+        return
+
+    if platform == "instagram" and url_type in ("story", "other"):
+        await update.message.reply_text(
+            f"Hello {name}! This bot only downloads Reels and Videos.\n\n"
+            "✅ Reels\n"
+            "✅ Videos\n"
+            "❌ Stories\n"
+            "❌ Pictures"
+        )
+        return
+
+    if platform == "facebook":
+        url = clean_facebook_url(raw_url)
+    else:
+        url = raw_url
+
+    msg = await update.message.reply_text("⏳ Processing...")
+
+    name = user.first_name or "N/A"
+    username = f"@{user.username}" if user.username else "N/A"
+    platform_label = "📘 Facebook" if platform == "facebook" else "📸 Instagram"
+    large_file_image = FB_IMAGE if platform == "facebook" else IG_IMAGE
+
+    link_msg_id = None
+
+    try:
+        # Step 1: User ka link storage channel me copy karo
+        copied = await context.bot.copy_message(
+            chat_id=STORAGE_CHANNEL_ID,
+            from_chat_id=update.effective_chat.id,
+            message_id=update.message.message_id
+        )
+        link_msg_id = copied.message_id
+
+        # Step 2: User info reply karke bhejo
+        info_text = (
+            f"{platform_label}\n\n"
+            f"👤 <b>Name</b>: {name}\n"
+            f"🔗 <b>Username</b>: {username}\n"
+            f"🆔 <b>User ID</b>: <code>{user_id}</code>"
+        )
+        await context.bot.send_message(
+            chat_id=STORAGE_CHANNEL_ID,
+            text=info_text,
+            parse_mode="HTML",
+            reply_to_message_id=link_msg_id
+        )
+
+        # Step 3: Download
+        await msg.edit_text("📥 Downloading...")
+        file_path, direct_url = download_video(url, platform=platform)
+
+        # Step 4: Actual size check
+        actual_size = os.path.getsize(file_path)
+        size_readable = format_size(actual_size)
+        logging.info(f"[{platform}] File size: {size_readable}")
+
+        # Step 5: 50MB se bada?
+        if actual_size > MAX_SIZE_BYTES:
+            os.remove(file_path)
+
+            caption = (
+                f"📦 <b>File Size: {size_readable}</b>\n\n"
+                "Please use the button below to download it directly ✅"
+            )
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬇️ Download Video", url=direct_url)]
+            ])
+
+            await context.bot.send_message(
+                chat_id=STORAGE_CHANNEL_ID,
+                text=(
+                    "⚠️ <b>Large File — Direct Link Sent</b>\n\n"
+                    f"📦 <b>Size</b>: {size_readable}\n"
+                    f"👤 <b>User</b>: {name}\n"
+                    f"🆔 <b>ID</b>: <code>{user_id}</code>"
+                ),
+                parse_mode="HTML",
+                reply_to_message_id=link_msg_id
+            )
+
+            if large_file_image:
+                await msg.delete()
+                await context.bot.copy_message(
+                    chat_id=update.effective_chat.id,
+                    from_chat_id=STORAGE_CHANNEL_ID,
+                    message_id=large_file_image,
+                    caption=caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            else:
+                await msg.edit_text(
+                    caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            return
+
+        # Step 6: Upload
+        await msg.edit_text("📤 Uploading...")
+
+        sent_msg = await context.bot.send_video(
+            chat_id=STORAGE_CHANNEL_ID,
+            video=open(file_path, "rb"),
+            reply_to_message_id=link_msg_id,
+            supports_streaming=True
+        )
+
+        # Step 7: User ko forward
+        await context.bot.copy_message(
+            chat_id=update.effective_chat.id,
+            from_chat_id=STORAGE_CHANNEL_ID,
+            message_id=sent_msg.message_id
+        )
+
+        await msg.delete()
+        os.remove(file_path)
+
+    except Exception as e:
+        error_str = str(e)
+        logging.error(f"[{platform}] Error: {error_str}")
+
+        if link_msg_id:
+            await context.bot.send_message(
+                chat_id=STORAGE_CHANNEL_ID,
+                text=(
+                    f"❌ <b>Download Failed</b> {platform_label}\n\n"
+                    f"👤 <b>User</b>: {name}\n"
+                    f"🆔 <b>ID</b>: <code>{user_id}</code>\n\n"
+                    f"⚠️ <b>Error</b>:\n<code>{error_str[:500]}</code>"
+                ),
+                parse_mode="HTML",
+                reply_to_message_id=link_msg_id
+            )
+
+        await msg.edit_text(
+            "❌ <b>Download failed!</b>\n\n"
+            "Possible reasons:\n"
+            "• Post is private or restricted\n"
+            "• Link has expired\n"
+            "• Temporarily unavailable\n\n"
+            "Please try again later. 🙏",
+            parse_mode="HTML"
+        )
+
+
+# ================== BUTTON ==================
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if await check_join(update, context):
+        await query.message.edit_text(
+            "✅ You can now use the bot. Send a Facebook or Instagram Reel link."
+        )
+    else:
+        await send_force_join(update)
+
+
+# ================== MAIN ==================
+def main():
+    async def run():
+        await start_health_server()
+
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("refer", refer_command))
+        app.add_handler(CommandHandler("earn", earn_command))
+        app.add_handler(CommandHandler("credits", credits_command))
+        app.add_handler(CommandHandler("broadcast", broadcast_command))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        app.add_handler(CallbackQueryHandler(button_handler))
+
+        print("🤖 Bot is running...")
+
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+
+        await asyncio.Event().wait()
+
+    asyncio.run(run())
+
+
+if __name__ == "__main__":
+    main()
