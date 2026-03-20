@@ -10,8 +10,8 @@ async def handle(request):
     return web.Response(text="OK", status=200)
 
 async def self_ping():
-    """Har 5 dakike me khud ko ping karo — sleep mode se bachne ke liye."""
-    await asyncio.sleep(10)  # Bot start hone ka wait karo
+    """Har 30 dakike me khud ko ping karo — sleep mode se bachne ke liye."""
+    await asyncio.sleep(10)
     while True:
         try:
             if APP_URL:
@@ -20,7 +20,7 @@ async def self_ping():
                         logging.info(f"Self ping: {resp.status}")
         except Exception as e:
             logging.warning(f"Self ping failed: {e}")
-        await asyncio.sleep(300)  # 5 dakike = 300 seconds
+        await asyncio.sleep(1800)  # 30 minute = 1800 seconds
 
 async def start_health_server():
     app = web.Application()
@@ -32,5 +32,4 @@ async def start_health_server():
     await site.start()
     logging.info("Health check server started on port 8000")
 
-    # Self ping background me start karo
     asyncio.create_task(self_ping())
