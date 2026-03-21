@@ -177,10 +177,13 @@ async def send_force_join(update: Update):
         [InlineKeyboardButton("✅ Joined", callback_data="check_join")]
     ])
 
-    if update.message:
-        await update.message.reply_text(text, reply_markup=keyboard)
-    elif update.callback_query:
-        await update.callback_query.message.edit_text(text, reply_markup=keyboard)
+    try:
+        if update.message:
+            await update.message.reply_text(text, reply_markup=keyboard)
+        elif update.callback_query:
+            await update.callback_query.message.edit_text(text, reply_markup=keyboard)
+    except Exception:
+        pass
 
 
 # ================== START ==================
@@ -391,10 +394,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if await check_join(update, context):
-        await query.message.edit_text("✅ You can now use the bot. Send a Facebook or Instagram Reel link.")
-    else:
-        await send_force_join(update)
+    try:
+        if await check_join(update, context):
+            await query.message.edit_text(
+                "✅ You can now use the bot. Send a Facebook or Instagram Reel link."
+            )
+        else:
+            await send_force_join(update)
+    except Exception:
+        pass
 
 
 # ================== MAIN ==================
