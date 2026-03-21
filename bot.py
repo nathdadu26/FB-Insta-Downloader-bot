@@ -14,6 +14,7 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
+from telegram.error import BadRequest, NetworkError, TimedOut
 import yt_dlp
 from health_check import start_health_server
 
@@ -46,6 +47,21 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+
+
+# ================== GLOBAL ERROR HANDLER ==================
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    error = context.error
+
+    # Ye common errors hain — silently ignore karo
+    if isinstance(error, BadRequest) and "Message is not modified" in str(error):
+        return
+    if isinstance(error, (NetworkError, TimedOut)):
+        logging.warning(f"Network error: {error}")
+        return
+
+    # Baaki errors log karo
+    logging.error(f"Unhandled error: {error}", exc_info=context.error)
 
 
 # ================== URL TYPE CHECKER ==================
@@ -182,8 +198,10 @@ async def send_force_join(update: Update):
             await update.message.reply_text(text, reply_markup=keyboard)
         elif update.callback_query:
             await update.callback_query.message.edit_text(text, reply_markup=keyboard)
-    except Exception:
+    except BadRequest:
         pass
+    except Exception as e:
+        logging.warning(f"send_force_join error: {e}")
 
 
 # ================== START ==================
@@ -366,27 +384,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"[{platform}] Error: {error_str}")
 
         if link_msg_id:
-            await context.bot.send_message(
-                chat_id=STORAGE_CHANNEL_ID,
-                text=(
-                    f"❌ <b>Download Failed</b> {platform_label}\n\n"
-                    f"👤 <b>User</b>: {name}\n"
-                    f"🆔 <b>ID</b>: <code>{user_id}</code>\n\n"
-                    f"⚠️ <b>Error</b>:\n<code>{error_str[:500]}</code>"
-                ),
-                parse_mode="HTML",
-                reply_to_message_id=link_msg_id
-            )
+            try:
+                await context.bot.send_message(
+                    chat_id=STORAGE_CHANNEL_ID,
+                    text=(
+                        f"❌ <b>Download Failed</b> {platform_label}\n\n"
+                        f"👤 <b>User</b>: {name}\n"
+                        f"🆔 <b>ID</b>: <code>{user_id}</code>\n\n"
+                        f"⚠️ <b>Error</b>:\n<code>{error_str[:500]}</code>"
+                    ),
+                    parse_mode="HTML",
+                    reply_to_message_id=link_msg_id
+                )
+            except Exception:
+                pass
 
-        await msg.edit_text(
-            "❌ <b>Download failed!</b>\n\n"
-            "Possible reasons:\n"
-            "• Post is private or restricted\n"
-            "• Link has expired\n"
-            "• Temporarily unavailable\n\n"
-            "Please try again later. 🙏",
-            parse_mode="HTML"
-        )
+        try:
+            await msg.edit_text(
+                "❌ <b>Download failed!</b>\n\n"
+                "Possible reasons:\n"
+                "• Post is private or restricted\n"
+                "• Link has expired\n"
+                "• Temporarily unavailable\n\n"
+                "Please try again later. 🙏",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
 
 # ================== BUTTON ==================
@@ -401,8 +425,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         else:
             await send_force_join(update)
-    except Exception:
+    except BadRequest:
         pass
+    except Exception as e:
+        logging.warning(f"button_handler error: {e}")
 
 
 # ================== MAIN ==================
@@ -411,6 +437,9 @@ def main():
         await start_health_server()
 
         app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+        # Global error handler — bot kabhi crash nahi hoga
+        app.add_error_handler(error_handler)
 
         app.add_handler(CommandHandler("start", start))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
