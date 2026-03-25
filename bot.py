@@ -28,6 +28,7 @@ FB_EMAIL = os.getenv("FB_EMAIL")
 FB_PASSWORD = os.getenv("FB_PASSWORD")
 IG_USERNAME = os.getenv("IG_USERNAME")
 IG_PASSWORD = os.getenv("IG_PASSWORD")
+ADMIN_ID = int(os.getenv("ADMIN_ID", 0))
 COOKIES_FILE = "cookies.txt"
 IG_COOKIES_FILE = "ig_cookies.txt"
 FB_IMAGE = int(os.getenv("FB_IMAGE", 0))
@@ -36,8 +37,9 @@ HOW_TO_USE_VIDEO = int(os.getenv("HOW_TO_USE_VIDEO", 0))
 
 MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
-# ================== USER MEMORY ==================
+# ================== USER DB ==================
 users_db = set()
+
 
 # ================== LOGGING ==================
 logging.basicConfig(
@@ -65,7 +67,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # ================== URL TYPE CHECKER ==================
 def get_url_type(url):
-    # ---- FACEBOOK ----
     if "facebook.com" in url or "fb.watch" in url:
         if "facebook.com/login" in url:
             parsed = urlparse(url)
@@ -85,7 +86,6 @@ def get_url_type(url):
             return "facebook", "reel"
         return "facebook", "other"
 
-    # ---- INSTAGRAM ----
     if "instagram.com" in url or "instagr.am" in url:
         if "/reel/" in url or "/reels/" in url:
             return "instagram", "reel"
@@ -182,84 +182,93 @@ async def send_force_join(update: Update):
     name = user.first_name
 
     text = (
-        f"👋 Hello {name}, welcome!\n\n"
-        f"🚫 To use this bot, you must join our update channel.\n\n"
+        f"👋 Welcome <b>{name}</b> to All in One Downloader Bot 🤖\n\n"
+        f"🚫 You must join our update channel to use this bot.\n\n"
         f"👉 After joining, click the button below to continue."
     )
 
     keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎬 How To Use", callback_data="send_how_to_use")],
         [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{FORCE_CHANNEL.replace('@', '')}")],
         [InlineKeyboardButton("✅ Joined", callback_data="check_join")]
     ])
 
     try:
         if update.message:
-            await update.message.reply_text(text, reply_markup=keyboard)
+            await update.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
         elif update.callback_query:
-            await update.callback_query.message.edit_text(text, reply_markup=keyboard)
+            await update.callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
     except BadRequest:
         pass
     except Exception as e:
         logging.warning(f"send_force_join error: {e}")
 
 
-# ================== START ==================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_join(update, context):
-        await send_force_join(update)
-        return
+# ================== HOW TO USE HELPER ==================
+async def send_how_to_use_video(chat_id, context: ContextTypes.DEFAULT_TYPE):
+    """Send how to use video or fallback text to given chat_id."""
+    if HOW_TO_USE_VIDEO:
+        try:
+            await context.bot.copy_message(
+                chat_id=chat_id,
+                from_chat_id=STORAGE_CHANNEL_ID,
+                message_id=HOW_TO_USE_VIDEO
+            )
+            return
+        except Exception as e:
+            logging.error(f"send_how_to_use_video copy error: {e}")
 
-    user = update.effective_user
-    name = user.first_name
-
-    users_db.add(user.id)
-
-    await update.message.reply_text(
-        f"👋 Hello {name}!\n"
-        f"🤖 Welcome to Facebook, Insta Downloader Bot\n\n"
-        f"📌 How to use:\n"
-        f"1. Copy a Facebook, Insta video or reel link\n"
-        f"2. Send it here\n"
-        f"3. Receive your file instantly\n\n"
-        f"🌐 Supported:\n"
-        f"facebook.com, instagram.com\n\n"
-        f"⚡ Features:\n"
-        f"- High quality downloads\n"
-        f"- Fast processing\n"
-        f"- No ads\n\n"
-        f"💡 Use /howtouse to see a tutorial video."
-    )
-
-
-# ================== HOW TO USE ==================
-async def how_to_use(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_join(update, context):
-        await send_force_join(update)
-        return
-
-    if not HOW_TO_USE_VIDEO:
-        await update.message.reply_text(
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
             "📖 <b>How to Use:</b>\n\n"
             "1️⃣ Copy a Facebook or Instagram Reel/Video link\n"
             "2️⃣ Paste it here and send\n"
             "3️⃣ Bot will download and send you the video instantly\n\n"
             "✅ <b>Supported:</b> Reels, Videos\n"
-            "❌ <b>Not Supported:</b> Stories, Photos",
-            parse_mode="HTML"
-        )
+            "❌ <b>Not Supported:</b> Stories, Photos"
+        ),
+        parse_mode="HTML"
+    )
+
+
+# ================== START ==================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    users_db.add(user.id)
+
+    if not await check_join(update, context):
+        await send_force_join(update)
         return
 
-    try:
-        await context.bot.copy_message(
-            chat_id=update.effective_chat.id,
-            from_chat_id=STORAGE_CHANNEL_ID,
-            message_id=HOW_TO_USE_VIDEO
-        )
-    except Exception as e:
-        logging.error(f"how_to_use error: {e}")
-        await update.message.reply_text(
-            "❌ How to use video abhi available nahi hai. Baad mein try karein."
-        )
+    name = user.first_name
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎬 How To Use", callback_data="send_how_to_use")]
+    ])
+
+    await update.message.reply_text(
+        f"👋 Welcome Back <b>{name}</b> to All in One Downloader Bot 🤖\n\n"
+        f"🌐 <b>Supported:</b>\n"
+        f"facebook.com, instagram.com\n\n"
+        f"⚡ <b>Features:</b>\n"
+        f"- High quality downloads\n"
+        f"- Fast processing\n"
+        f"- No ads\n\n"
+        f"💡 Use /howtouse to see a tutorial video. Or click this button 👇",
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
+
+
+# ================== HOW TO USE COMMAND ==================
+async def how_to_use(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_join(update, context):
+        await send_force_join(update)
+        return
+
+    users_db.add(update.effective_user.id)
+    await send_how_to_use_video(update.effective_chat.id, context)
 
 
 # ================== HANDLE MESSAGE ==================
@@ -267,6 +276,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_join(update, context):
         await send_force_join(update)
         return
+
+    users_db.add(update.effective_user.id)
 
     raw_url = update.message.text.strip()
     platform, url_type = get_url_type(raw_url)
@@ -316,7 +327,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link_msg_id = None
 
     try:
-        # Step 1: User ka link storage channel me copy karo
         copied = await context.bot.copy_message(
             chat_id=STORAGE_CHANNEL_ID,
             from_chat_id=update.effective_chat.id,
@@ -324,7 +334,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         link_msg_id = copied.message_id
 
-        # Step 2: User info reply karke bhejo
         info_text = (
             f"{platform_label}\n\n"
             f"👤 <b>Name</b>: {name}\n"
@@ -338,16 +347,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_to_message_id=link_msg_id
         )
 
-        # Step 3: Download karo
         await msg.edit_text("📥 Downloading...")
         file_path, direct_url = download_video(url, platform=platform)
 
-        # Step 4: Actual file size check karo
         actual_size = os.path.getsize(file_path)
         size_readable = format_size(actual_size)
         logging.info(f"[{platform}] File size: {size_readable}")
 
-        # Step 5: 50MB se bada?
         if actual_size > MAX_SIZE_BYTES:
             os.remove(file_path)
 
@@ -390,7 +396,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             return
 
-        # Step 6: Upload karo
         await msg.edit_text("📤 Uploading...")
 
         sent_msg = await context.bot.send_video(
@@ -400,7 +405,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             supports_streaming=True
         )
 
-        # Step 7: User ko forward karo
         await context.bot.copy_message(
             chat_id=update.effective_chat.id,
             from_chat_id=STORAGE_CHANNEL_ID,
@@ -444,22 +448,107 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
-# ================== BUTTON ==================
+# ================== BUTTON HANDLER ==================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    try:
-        if await check_join(update, context):
-            await query.message.edit_text(
-                "✅ You can now use the bot. Send a Facebook or Instagram Reel link."
-            )
-        else:
-            await send_force_join(update)
-    except BadRequest:
-        pass
-    except Exception as e:
-        logging.warning(f"button_handler error: {e}")
+    if query.data == "send_how_to_use":
+        await send_how_to_use_video(query.message.chat.id, context)
+        return
+
+    if query.data == "check_join":
+        try:
+            if await check_join(update, context):
+                users_db.add(update.effective_user.id)
+                name = update.effective_user.first_name
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🎬 How To Use", callback_data="send_how_to_use")]
+                ])
+                await query.message.edit_text(
+                    f"👋 Welcome Back <b>{name}</b> to All in One Downloader Bot 🤖\n\n"
+                    f"🌐 <b>Supported:</b>\n"
+                    f"facebook.com, instagram.com\n\n"
+                    f"⚡ <b>Features:</b>\n"
+                    f"- High quality downloads\n"
+                    f"- Fast processing\n"
+                    f"- No ads\n\n"
+                    f"💡 Use /howtouse to see a tutorial video. Or click this button 👇",
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            else:
+                await send_force_join(update)
+        except BadRequest:
+            pass
+        except Exception as e:
+            logging.warning(f"button_handler check_join error: {e}")
+
+
+# ================== BROADCAST ==================
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
+
+    if not context.args and not update.message.reply_to_message:
+        await update.message.reply_text(
+            "📢 <b>How to Broadcast:</b>\n\n"
+            "Reply to any message with /broadcast\n"
+            "OR\n"
+            "/broadcast your message here",
+            parse_mode="HTML"
+        )
+        return
+
+    total = len(users_db)
+    success = 0
+    failed = 0
+
+    status_msg = await update.message.reply_text(
+        f"📤 Broadcasting to <b>{total}</b> users...",
+        parse_mode="HTML"
+    )
+
+    for uid in list(users_db):
+        try:
+            if update.message.reply_to_message:
+                await context.bot.copy_message(
+                    chat_id=uid,
+                    from_chat_id=update.effective_chat.id,
+                    message_id=update.message.reply_to_message.message_id
+                )
+            else:
+                text = " ".join(context.args)
+                await context.bot.send_message(chat_id=uid, text=text)
+            success += 1
+        except Exception:
+            failed += 1
+        await asyncio.sleep(0.05)
+
+    await status_msg.edit_text(
+        f"✅ <b>Broadcast Complete!</b>\n\n"
+        f"👥 <b>Total Users:</b> {total}\n"
+        f"✔️ <b>Success:</b> {success}\n"
+        f"❌ <b>Failed:</b> {failed}",
+        parse_mode="HTML"
+    )
+
+
+# ================== TOTAL USERS ==================
+async def total_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
+
+    await update.message.reply_text(
+        f"👥 <b>Total Users:</b> <code>{len(users_db)}</code>",
+        parse_mode="HTML"
+    )
 
 
 # ================== MAIN ==================
@@ -473,6 +562,8 @@ def main():
 
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("howtouse", how_to_use))
+        app.add_handler(CommandHandler("broadcast", broadcast))
+        app.add_handler(CommandHandler("users", total_users))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_handler(CallbackQueryHandler(button_handler))
 
