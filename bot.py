@@ -32,6 +32,7 @@ COOKIES_FILE = "cookies.txt"
 IG_COOKIES_FILE = "ig_cookies.txt"
 FB_IMAGE = int(os.getenv("FB_IMAGE", 0))
 IG_IMAGE = int(os.getenv("IG_IMAGE", 0))
+HOW_TO_USE_VIDEO = int(os.getenv("HOW_TO_USE_VIDEO", 0))
 
 MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
@@ -53,14 +54,12 @@ logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     error = context.error
 
-    # Ye common errors hain — silently ignore karo
     if isinstance(error, BadRequest) and "Message is not modified" in str(error):
         return
     if isinstance(error, (NetworkError, TimedOut)):
         logging.warning(f"Network error: {error}")
         return
 
-    # Baaki errors log karo
     logging.error(f"Unhandled error: {error}", exc_info=context.error)
 
 
@@ -227,8 +226,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚡ Features:\n"
         f"- High quality downloads\n"
         f"- Fast processing\n"
-        f"- No ads"
+        f"- No ads\n\n"
+        f"💡 Use /howtouse to see a tutorial video."
     )
+
+
+# ================== HOW TO USE ==================
+async def how_to_use(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_join(update, context):
+        await send_force_join(update)
+        return
+
+    if not HOW_TO_USE_VIDEO:
+        await update.message.reply_text(
+            "📖 <b>How to Use:</b>\n\n"
+            "1️⃣ Copy a Facebook or Instagram Reel/Video link\n"
+            "2️⃣ Paste it here and send\n"
+            "3️⃣ Bot will download and send you the video instantly\n\n"
+            "✅ <b>Supported:</b> Reels, Videos\n"
+            "❌ <b>Not Supported:</b> Stories, Photos",
+            parse_mode="HTML"
+        )
+        return
+
+    try:
+        await context.bot.copy_message(
+            chat_id=update.effective_chat.id,
+            from_chat_id=STORAGE_CHANNEL_ID,
+            message_id=HOW_TO_USE_VIDEO
+        )
+    except Exception as e:
+        logging.error(f"how_to_use error: {e}")
+        await update.message.reply_text(
+            "❌ How to use video abhi available nahi hai. Baad mein try karein."
+        )
 
 
 # ================== HANDLE MESSAGE ==================
@@ -438,10 +469,10 @@ def main():
 
         app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-        # Global error handler — bot kabhi crash nahi hoga
         app.add_error_handler(error_handler)
 
         app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("howtouse", how_to_use))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_handler(CallbackQueryHandler(button_handler))
 
